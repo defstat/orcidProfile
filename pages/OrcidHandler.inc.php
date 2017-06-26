@@ -15,6 +15,7 @@
  */
 
 import('classes.handler.Handler');
+import('plugins.generic.orcidProfile.classes.OrcidUserSettingsDAO');
 
 class OrcidHandler extends Handler {
 	/**
@@ -89,7 +90,8 @@ class OrcidHandler extends Handler {
                     // The user that will be logged in
                     $loggedInUser = null;
                     // Check if there is any user that has autoassigned orcidauth parameter on the UserSettings.
-                    $userSettingsDao = DAORegistry::getDAO('UserSettingsDAO');
+					$userSettingsDao = new OrcidUserSettingsDAO();
+                    //$userSettingsDao = DAORegistry::getDAO('UserSettingsDAO');
                     $userDao = DAORegistry::getDAO('UserDAO');
                     $users = $userSettingsDao->getUsersBySetting('orcidauth', 'http://orcid.org/' . $response['orcid']);
                     if (is_null($users) || $users->count == 0) { // If no user exists
