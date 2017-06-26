@@ -39,7 +39,7 @@ class OrcidProfileSettingsForm extends Form {
 		$this->addCheck(new FormValidator($this, 'orcidProfileAPIPath', 'required', 'plugins.generic.orcidProfile.manager.settings.orcidAPIPathRequired'));
 
 		$this->addCheck(new FormValidatorPost($this));
-		$this->addCheck(new FormValidatorCSRF($this));
+		//$this->addCheck(new FormValidatorCSRF($this));
 	}
 
 	/**

@@ -24,7 +24,8 @@ define('ORCID_API_URL_MEMBER', 'https://api.orcid.org/');
 define('ORCID_API_URL_MEMBER_SANDBOX', 'https://api.sandbox.orcid.org/');
 
 define('OAUTH_TOKEN_URL', 'oauth/token');
-define('ORCID_API_VERSION_URL', 'v2.0/');
+//define('ORCID_API_VERSION_URL', 'v2.0/');
+define('ORCID_API_VERSION_URL', 'v1.2/');
 define('ORCID_PROFILE_URL', 'orcid-profile');
 
 class OrcidProfilePlugin extends GenericPlugin {
@@ -99,12 +100,22 @@ class OrcidProfilePlugin extends GenericPlugin {
 		);
 
 		switch ($template) {
-			case 'frontend/pages/userRegister.tpl':
+			case 'user/register.tpl':
+				$templateMgr->register_outputfilter(array(&$this, 'registrationFilter'));
+				break;
+			case 'author/submit/step3.tpl':
+				$templateMgr->register_outputfilter(array(&$this, 'submitFilter'));
+				break;
+			case 'frontend/pages/userRegister.tpl': // OMP
 				$templateMgr->register_outputfilter(array($this, 'registrationFilter'));
 				break;
 			case 'user/publicProfileForm.tpl':
 				$templateMgr->register_outputfilter(array($this, 'profileFilter'));
 				break;
+			case 'frontend/pages/userLogin.tpl': // OMP
+				$templateMgr->register_outputfilter(array(&$this, 'loginFilterOMP'));
+				break;
+
 		}
 		return false;
 	}
@@ -123,6 +134,60 @@ class OrcidProfilePlugin extends GenericPlugin {
 		} else {
 			return ORCID_OAUTH_URL_SANDBOX;
 		}
+	}
+
+	/**
+	 * Output filter adds ORCiD interaction to OJS login form.
+	 * @param $output string
+	 * @param $templateMgr TemplateManager
+	 * @return $string
+	 */
+	function loginFilter($output, &$templateMgr) {
+        $sessionManager = SessionManager::getManager();
+        $userSession = $sessionManager->getUserSession();
+		if (preg_match('/<form.*id="signinForm"[^>]+>/', $output, $matches, PREG_OFFSET_CAPTURE)) { // OMP: id="login" OJS: id="signinForm"
+			$match = $matches[0][0];
+			$offset = $matches[0][1];
+			$context = Request::getContext();
+			$templateMgr->assign(array(
+				'targetOp' => 'login',
+				'orcidProfileOauthPath' => $this->getOauthPath(),
+				'orcidClientId' => $this->getSetting($context->getId(), 'orcidClientId'),
+			));
+			$newOutput = substr($output, 0, $offset);
+			$newOutput .= $templateMgr->fetch($this->getTemplatePath() . 'orcidLogin.tpl');
+			$newOutput .= substr($output, $offset);
+			$output = $newOutput;
+		}
+		$templateMgr->unregister_outputfilter('loginFilter');
+		return $output;
+	}
+
+	/**
+	 * Output filter adds ORCiD interaction to OMP login form.
+	 * @param $output string
+	 * @param $templateMgr TemplateManager
+	 * @return $string
+	 */
+	function loginFilterOMP($output, &$templateMgr) {
+        $sessionManager = SessionManager::getManager();
+        $userSession = $sessionManager->getUserSession();
+		if (preg_match('/<form.*id="login"[^>]+>/', $output, $matches, PREG_OFFSET_CAPTURE)) { // OMP: id="login" OJS: id="signinForm"
+			$match = $matches[0][0];
+			$offset = $matches[0][1];
+			$context = Request::getContext();
+			$templateMgr->assign(array(
+				'targetOp' => 'login',
+				'orcidProfileOauthPath' => $this->getOauthPath(),
+				'orcidClientId' => $this->getSetting($context->getId(), 'orcidClientId'),
+			));
+			$newOutput = substr($output, 0, $offset);
+			$newOutput .= $templateMgr->fetch($this->getTemplatePath() . 'orcidLogin.tpl');
+			$newOutput .= substr($output, $offset);
+			$output = $newOutput;
+		}
+		$templateMgr->unregister_outputfilter('loginFilterOMP');
+		return $output;
 	}
 
 	/**
