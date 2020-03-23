@@ -72,7 +72,7 @@ class OrcidProfilePlugin extends GenericPlugin {
 
 			// Send emails to authors without authorised ORCID access on promoting a submission to copy editing. Not included in OPS.
 			$application = Application::get();
-			if ($application->getName() != 'ops'){
+			if ($application->getName() != 'ops') {
 				$contextId = ($mainContextId === null) ? $this->getCurrentContextId() : $mainContextId;
 				if ($this->getSetting($contextId, 'sendMailToAuthorsOnPublication')) {
 					HookRegistry::register('EditorAction::recordDecision', array($this, 'handleEditorAction'));
@@ -187,7 +187,7 @@ class OrcidProfilePlugin extends GenericPlugin {
 	 * @return bool
 	 */
 	function handleTemplateDisplay($hookName, $args) {
-		$templateMgr =& $args[0];
+		$templateMgr =& $args[0]; /** @var $templateMgr TemplateManager */
 		$template =& $args[1];
 		$request = PKPApplication::get()->getRequest();
 
@@ -227,6 +227,9 @@ class OrcidProfilePlugin extends GenericPlugin {
 				}
 				$templateMgr->addJavaScript('orcidIconDisplay', $script, ['inline' => true]);
 				break;
+			case 'frontend/pages/userLogin.tpl':
+				$templateMgr->registerFilter("output", array($this, 'loginFilter'));
+				break;			
 		}
 		return false;
 	}
@@ -312,9 +315,46 @@ class OrcidProfilePlugin extends GenericPlugin {
 
 			$newOutput = substr($output, 0, $offset+strlen($match));
 			$newOutput .= $templateMgr->fetch($this->getTemplateResource('orcidProfile.tpl'));
-			$newOutput .= substr($output, $offset+strlen($match));
+			$newOutput .= substr($output, $offset+strlen($match)); 
 			$output = $newOutput;
 			$templateMgr->unregisterFilter('output', array($this, 'registrationFilter'));
+		}
+		return $output;
+	}
+
+	/**
+	 * Output filter adds ORCiD interaction to login form.
+	 * @param $output string
+	 * @param $templateMgr TemplateManager
+	 * @return $string
+	 */
+	function loginFilter($output, $templateMgr) {
+		if (preg_match('/<form[^>]+id="login"[^>]+>/', $output, $matches, PREG_OFFSET_CAPTURE)) {
+			$match = $matches[0][0];
+			$offset = $matches[0][1];
+			$request = Application::get()->getRequest();
+			$context = $request->getContext();
+			$contextId = ($context == null) ? 0 : $context->getId();
+			$targetOp = 'login';
+
+			// $templateMgr->assign(array(
+			// 	'targetOp' => $targetOp,
+			// 	'orcidProfileOauthPath' => $this->getOauthPath(),
+			// 	'orcidClientId' => $this->getSetting($contextId, 'orcidClientId'),
+			// ));
+			$templateMgr->assign(array(
+				'targetOp' => $targetOp,
+				'orcidUrl' => $this->getOrcidUrl(),
+				'orcidOAuthUrl' => $this->buildOAuthUrl('orcidAuthorize', array('targetOp' => $targetOp)),
+				'orcidIcon' => $this->getIcon(),
+				'jQueryUrl' => $this->_getJQueryUrl($request),
+			));
+
+			$newOutput = substr($output, 0, $offset);
+			$newOutput .= $templateMgr->fetch($this->getTemplateResource('orcidLogin.tpl'));
+			$newOutput .= substr($output, $offset);
+			$output = $newOutput;
+			$templateMgr->unregisterFilter('output', array($this, 'loginFilter'));
 		}
 		return $output;
 	}
@@ -1204,6 +1244,20 @@ class OrcidProfilePlugin extends GenericPlugin {
 		}
 		else {
 			return false;
+		}
+	}
+
+	/**
+	 * Get the URL for JQuery JS.
+	 * @param $request PKPRequest
+	 * @return string
+	 */
+	private function _getJQueryUrl($request) {
+		$min = Config::getVar('general', 'enable_minified') ? '.min' : '';
+		if (Config::getVar('general', 'enable_cdn')) {
+			return '//ajax.googleapis.com/ajax/libs/jquery/' . CDN_JQUERY_VERSION . '/jquery' . $min . '.js';
+		} else {
+			return $request->getBaseUrl() . '/lib/pkp/lib/vendor/components/jquery/jquery' . $min . '.js';
 		}
 	}
 }
