@@ -15,6 +15,7 @@
  */
 
 import('classes.handler.Handler');
+import('lib.pkp.classes.dataTransfer.PKPCurl');
 
 class OrcidHandler extends Handler {
 	const TEMPLATE = 'orcidVerify.tpl';
@@ -58,15 +59,18 @@ class OrcidHandler extends Handler {
 		$contextId = ($context == null) ? CONTEXT_ID_NONE : $context->getId();
 
 		// Set up common CURL request details
-		$curl = curl_init();
-		// Use proxy if configured
-		if ($httpProxyHost = Config::getVar('proxy', 'http_host')) {
-			curl_setopt($curl, CURLOPT_PROXY, $httpProxyHost);
-			curl_setopt($curl, CURLOPT_PROXYPORT, Config::getVar('proxy', 'http_port', '80'));
-			if ($username = Config::getVar('proxy', 'username')) {
-				curl_setopt($curl, CURLOPT_PROXYUSERPWD, $username . ':' . Config::getVar('proxy', 'password'));
-			}
-		}
+
+		$curl = PKPCurl::createCurlInstance();
+		PKPCurl::fetchCurrentCacert();
+		// $curl = curl_init();
+		// // Use proxy if configured
+		// if ($httpProxyHost = Config::getVar('proxy', 'http_host')) {
+		// 	curl_setopt($curl, CURLOPT_PROXY, $httpProxyHost);
+		// 	curl_setopt($curl, CURLOPT_PROXYPORT, Config::getVar('proxy', 'http_port', '80'));
+		// 	if ($username = Config::getVar('proxy', 'username')) {
+		// 		curl_setopt($curl, CURLOPT_PROXYUSERPWD, $username . ':' . Config::getVar('proxy', 'password'));
+		// 	}
+		// }
 
 		// API request: Get an OAuth token and ORCID.
 		curl_setopt_array($curl, array(
